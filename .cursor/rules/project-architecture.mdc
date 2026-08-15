@@ -1,0 +1,43 @@
+---
+description: Enforce phased architecture and separation of concerns
+alwaysApply: true
+---
+
+# Healthcare Dietician Portal - Project Architecture Rules
+
+## Phase Boundaries
+
+- This is a phased healthcare/nutrition portal project.
+- Build only the modules explicitly requested for the current phase.
+- Do not implement future portal modules unless explicitly asked.
+- For the current phase, full portal business features are intentionally not built.
+- Future modules must be introduced as separate phases with clear scope.
+
+## Architecture and Separation
+
+- Keep public website, portal layout, auth, content, validation, and utilities clearly separated.
+- Keep pages thin and composition-based; business logic belongs in `src/lib`.
+- Keep reusable components in `src/components`.
+- Keep static public website content in `src/content`.
+- Keep authentication logic in `src/lib/auth`.
+- Keep validation schemas in `src/lib/validation`.
+- Keep shared route constants and role constants centralized; do not duplicate role/route mapping.
+
+## Content and Reuse
+
+- Do not duplicate navigation arrays across files.
+- Do not hardcode services or experts inside page components.
+- Source public-facing structured content from `src/content/*`.
+
+## Type Safety and Forms
+
+- Use TypeScript strict mode.
+- Avoid `any`; prefer explicit types and inferred Zod types.
+- Use Zod for form and payload validation.
+- Use React Hook Form for forms.
+
+## UI and Security Guardrails
+
+- Use shadcn/ui components where useful for consistency and accessibility.
+- Do not use `localStorage` for authentication state.
+- Do not expose private dashboard routes without authentication and role checks.
