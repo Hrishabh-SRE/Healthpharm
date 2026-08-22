@@ -83,10 +83,24 @@ async function seedUsers(): Promise<void> {
         where: { userId: createdOrUpdated.id },
         create: {
           userId: createdOrUpdated.id,
+          gender: "Female",
+          primaryContact: "9990001111",
           primaryGoal: "General wellness",
-          profileCompletionPercent: 25,
+          activityState: "Moderately active",
+          clientMedicalCondition: "None",
+          height: "165",
+          weight: "68",
+          profileCompletionPercent: 70,
         },
-        update: {},
+        update: {
+          gender: "Female",
+          primaryContact: "9990001111",
+          primaryGoal: "General wellness",
+          activityState: "Moderately active",
+          clientMedicalCondition: "None",
+          height: "165",
+          weight: "68",
+        },
       });
 
       if (!existingUser) {
@@ -194,7 +208,9 @@ async function seedLeads(): Promise<void> {
 
 async function seedAssignment(): Promise<void> {
   const client = await prisma.user.findUnique({ where: { email: "client@example.com" } });
+  const clientTwo = await prisma.user.findUnique({ where: { email: "client2@example.com" } });
   const dietician = await prisma.user.findUnique({ where: { email: "dietician@example.com" } });
+  const dieticianTwo = await prisma.user.findUnique({ where: { email: "dietician2@example.com" } });
 
   if (!client || !dietician) {
     return;
@@ -224,6 +240,31 @@ async function seedAssignment(): Promise<void> {
         entityId: assignment.id,
       },
     });
+  }
+
+  if (clientTwo && dieticianTwo) {
+    const secondExisting = await prisma.clientDieticianAssignment.findFirst({
+      where: {
+        clientId: clientTwo.id,
+        status: AssignmentStatus.ACTIVE,
+      },
+    });
+    if (!secondExisting) {
+      const assignment = await prisma.clientDieticianAssignment.create({
+        data: {
+          clientId: clientTwo.id,
+          dieticianId: dieticianTwo.id,
+          status: AssignmentStatus.ACTIVE,
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          action: AuditAction.CLIENT_ASSIGNED,
+          entityType: "ClientDieticianAssignment",
+          entityId: assignment.id,
+        },
+      });
+    }
   }
 }
 

@@ -10,7 +10,7 @@ type PortalSidebarProps = {
 
 export function PortalSidebar({ user }: PortalSidebarProps): React.JSX.Element {
   const dashboardHref = getDashboardRouteForRole(user.role);
-  const adminLinks =
+  const links =
     user.role === ROLES.ADMIN
       ? [
           { label: "Dashboard", href: "/admin/dashboard" },
@@ -18,14 +18,24 @@ export function PortalSidebar({ user }: PortalSidebarProps): React.JSX.Element {
           { label: "Users", href: "/admin/users" },
           { label: "Assignments", href: "/admin/assignments" },
         ]
-      : [{ label: "Dashboard", href: dashboardHref }];
+      : user.role === ROLES.CLIENT
+        ? [
+            { label: "Dashboard", href: "/client/dashboard" },
+            { label: "Profile", href: "/client/profile" },
+          ]
+        : user.role === ROLES.DIETICIAN
+          ? [
+              { label: "Dashboard", href: "/dietician/dashboard" },
+              { label: "Assigned Clients", href: "/dietician/clients" },
+            ]
+          : [{ label: "Dashboard", href: dashboardHref }];
 
   return (
     <aside className="hidden w-64 border-r border-slate-200 bg-white p-5 md:block">
       <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Portal</p>
       <p className="mt-1 text-base font-semibold text-slate-900">{user.role}</p>
       <nav className="mt-6 space-y-2">
-        {adminLinks.map((item) => (
+        {links.map((item) => (
           <Link key={item.href} href={item.href} className="block rounded-md bg-primary-light px-3 py-2 text-sm font-medium text-primary-dark">
             {item.label}
           </Link>

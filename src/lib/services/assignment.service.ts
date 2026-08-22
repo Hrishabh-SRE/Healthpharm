@@ -111,3 +111,38 @@ export async function getActiveAssignmentsCount() {
     where: { status: AssignmentStatus.ACTIVE },
   });
 }
+
+export async function getActiveAssignmentForClient(clientId: string) {
+  return prisma.clientDieticianAssignment.findFirst({
+    where: {
+      clientId,
+      status: AssignmentStatus.ACTIVE,
+    },
+    include: {
+      dietician: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+    },
+  });
+}
+
+export async function assertDieticianCanAccessClient(dieticianUserId: string, clientUserId: string) {
+  const assignment = await prisma.clientDieticianAssignment.findFirst({
+    where: {
+      dieticianId: dieticianUserId,
+      clientId: clientUserId,
+      status: AssignmentStatus.ACTIVE,
+    },
+  });
+
+  if (!assignment) {
+    return { allowed: false as const, assignment: null };
+  }
+
+  return { allowed: true as const, assignment };
+}

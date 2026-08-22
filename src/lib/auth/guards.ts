@@ -24,3 +24,27 @@ export async function requireAdminApi() {
 
   return { error: null, user };
 }
+
+export async function requireDieticianApi() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: errorResponse("UNAUTHORIZED", "Authentication is required.", 401), user: null };
+  }
+  if (user.role !== ROLES.DIETICIAN) {
+    return { error: errorResponse("FORBIDDEN", "Only dieticians can access this resource.", 403), user: null };
+  }
+
+  return { error: null, user };
+}
+
+export async function requireClientApi() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: errorResponse("UNAUTHORIZED", "Authentication is required.", 401), user: null };
+  }
+  if (user.role !== ROLES.CLIENT) {
+    return { error: errorResponse("FORBIDDEN", "Only clients can access this resource.", 403), user: null };
+  }
+
+  return { error: null, user };
+}

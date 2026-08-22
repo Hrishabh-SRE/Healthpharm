@@ -6,3 +6,7 @@ export const DASHBOARD_ACCESS: Record<UserRole, UserRole> = {
   [ROLES.DIETICIAN]: ROLES.DIETICIAN,
   [ROLES.CLIENT]: ROLES.CLIENT,
 };
+
+export function assertClientCanAccessOwnData(loggedInUserId: string, targetClientId: string): boolean {
+  return loggedInUserId === targetClientId;
+}

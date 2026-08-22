@@ -40,6 +40,7 @@ enum AuditAction {
   DIETICIAN_PROFILE_CREATED
   CLIENT_ASSIGNED
   CLIENT_UNASSIGNED
+  PROFILE_UPDATED
   SESSION_REVOKED
 }
 
@@ -133,14 +134,54 @@ model ClientProfile {
   userId                 String   @unique
   dateOfBirth            DateTime?
   gender                 String?
+  maritalStatus          String?
+  bloodGroup             String?
+  isChildAccount         Boolean  @default(false)
+  primaryContact         String?
+  alternateContact       String?
+  profession             String?
+  familyMemberOnboarded  Boolean  @default(false)
   address                String?
   emergencyContactName   String?
   emergencyContactPhone  String?
   occupation             String?
   lifestyle              String?
   primaryGoal            String?
+  otherGoal              String?
   height                 Decimal?
   weight                 Decimal?
+  fatPercentage          Decimal?
+  visceralFat            Decimal?
+  restingMetabolismKcal  Decimal?
+  bodyAge                Decimal?
+  fatMassKg              Decimal?
+  totalSubcutaneousFatPercentage Decimal?
+  subcutaneousFatTrunkPercentage Decimal?
+  subcutaneousFatArmsPercentage Decimal?
+  subcutaneousFatLegsPercentage Decimal?
+  totalSkeletalMusclePercentage Decimal?
+  skeletalMuscleTrunkPercentage Decimal?
+  skeletalMuscleArmsPercentage Decimal?
+  skeletalMuscleLegsPercentage Decimal?
+  bmi                    Decimal?
+  fatFreeMassKg          Decimal?
+  waistInch              Decimal?
+  hipInch                Decimal?
+  waterContentPercentage Decimal?
+  boneWeightKg           Decimal?
+  clientMedicalCondition String?
+  parentMedicalConditionAndSymptoms String?
+  otherMedicalConditions String?
+  clientMedicalSymptoms  String?
+  activityState          String?
+  intensity              String?
+  coldFrequency          String?
+  bloodPressure          String?
+  systolicBp             Decimal?
+  diastolicBp            Decimal?
+  healthRating           String?
+  fitnessRating          String?
+  remarks                String?
   allergies              String?
   foodPreferences        String?
   foodRestrictions       String?
