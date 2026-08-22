@@ -13,6 +13,7 @@ type PortalTopbarProps = {
 export function PortalTopbar({ user }: PortalTopbarProps): React.JSX.Element {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const userDisplayName = `${user.firstName} ${user.lastName}`.trim();
 
   const handleLogout = async (): Promise<void> => {
     try {
@@ -30,7 +31,7 @@ export function PortalTopbar({ user }: PortalTopbarProps): React.JSX.Element {
       <div>
         <p className="text-xs uppercase tracking-wide text-slate-500">Signed in as</p>
         <p className="text-sm font-medium text-slate-900">
-          {user.name} ({user.role})
+          {userDisplayName} ({user.role})
         </p>
       </div>
       <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>

@@ -34,7 +34,11 @@ export function LoginForm(): React.JSX.Element {
       body: JSON.stringify(values),
     });
 
-    const payload = (await response.json()) as { success: boolean; error?: string; data?: { redirectTo: string } };
+    const payload = (await response.json()) as {
+      success: boolean;
+      error?: { code: string; message: string };
+      data?: { redirectTo: string };
+    };
     if (!response.ok || !payload.success || !payload.data?.redirectTo) {
       setServerError("Invalid email or password.");
       return;

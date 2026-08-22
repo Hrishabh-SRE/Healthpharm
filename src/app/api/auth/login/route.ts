@@ -2,38 +2,41 @@ import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
 import { loginSchema } from "@/lib/validation/auth.schema";
-import { createSession, getSessionCookieName, getSessionMaxAgeSeconds } from "@/lib/auth/session";
+import { setSessionCookie } from "@/lib/auth/session";
 import { errorResponse, successResponse } from "@/lib/utils/api-response";
 import { getDashboardRouteForRole, loginWithCredentials } from "@/lib/auth/auth";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest): Promise<Response> {
-  const body = (await request.json()) as unknown;
-  const parsed = loginSchema.safeParse(body);
+  try {
+    const body = (await request.json()) as unknown;
+    const parsed = loginSchema.safeParse(body);
 
-  if (!parsed.success) {
-    return errorResponse("Invalid email or password.", 401);
+    if (!parsed.success) {
+      return errorResponse("INVALID_CREDENTIALS", "Invalid email or password.", 401);
+    }
+
+    const result = await loginWithCredentials(parsed.data, {
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    });
+
+    if (!result) {
+      return errorResponse("INVALID_CREDENTIALS", "Invalid email or password.", 401);
+    }
+
+    const cookieStore = await cookies();
+    setSessionCookie(cookieStore, result.sessionToken);
+
+    return successResponse(
+      {
+        user: result.user,
+        redirectTo: getDashboardRouteForRole(result.user.role),
+      },
+      200,
+    );
+  } catch {
+    return errorResponse("SERVER_ERROR", "Unable to process login request.", 500);
   }
-
-  const user = await loginWithCredentials(parsed.data);
-  if (!user) {
-    return errorResponse("Invalid email or password.", 401);
-  }
-
-  const sessionToken = await createSession(user);
-  const cookieStore = await cookies();
-  cookieStore.set(getSessionCookieName(), sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: getSessionMaxAgeSeconds(),
-  });
-
-  return successResponse(
-    {
-      user,
-      redirectTo: getDashboardRouteForRole(user.role),
-    },
-    200,
-  );
 }

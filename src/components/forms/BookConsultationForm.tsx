@@ -43,14 +43,20 @@ export function BookConsultationForm(): React.JSX.Element {
       body: JSON.stringify(values),
     });
 
-    const payload = (await response.json()) as { success: boolean };
+    const payload = (await response.json()) as {
+      success: boolean;
+      data?: { message?: string };
+    };
     if (!response.ok || !payload.success) {
       setServerError("Unable to submit your request at the moment. Please try again.");
       return;
     }
 
     form.reset();
-    setSuccessMessage("Thank you. Your consultation request has been submitted. Our team will contact you soon.");
+    setSuccessMessage(
+      payload.data?.message ??
+        "Thank you. Your consultation request has been submitted. Our team will contact you soon.",
+    );
   };
 
   return (
