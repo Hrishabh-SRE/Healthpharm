@@ -31,24 +31,42 @@ enum AuditAction {
   USER_LOGIN
   USER_LOGOUT
   USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
   LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_CONVERTED_TO_CLIENT
+  CLIENT_PROFILE_CREATED
+  DIETICIAN_PROFILE_CREATED
+  CLIENT_ASSIGNED
+  CLIENT_UNASSIGNED
   SESSION_REVOKED
 }
 
+enum AssignmentStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
-  passwordHash String
-  role         UserRole
-  status       UserStatus
-  firstName    String
-  lastName     String
-  phone        String?
-  lastLoginAt  DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  sessions     Session[]
-  auditLogs    AuditLog[]
+  id                   String                    @id @default(uuid())
+  email                String                    @unique
+  passwordHash         String
+  role                 UserRole
+  status               UserStatus
+  firstName            String
+  lastName             String
+  phone                String?
+  lastLoginAt          DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  sessions             Session[]
+  auditLogs            AuditLog[]
+  clientProfile        ClientProfile?
+  dieticianProfile     DieticianProfile?
+  clientAssignments    ClientDieticianAssignment[] @relation("ClientAssignments")
+  dieticianAssignments ClientDieticianAssignment[] @relation("DieticianAssignments")
+  convertedLeads       Lead[]                    @relation("LeadConvertedClient")
 
   @@index([role])
   @@index([status])
@@ -71,24 +89,26 @@ model Session {
 }
 
 model Lead {
-  id               String     @id @default(uuid())
-  fullName         String
-  email            String
-  phone            String
+  id                String     @id @default(uuid())
+  fullName          String
+  email             String
+  phone             String
   interestedService String
-  healthGoal       String?
-  preferredDate    DateTime?
-  preferredTime    String?
-  message          String?
-  consentAccepted  Boolean
-  status           LeadStatus @default(NEW)
+  healthGoal        String?
+  preferredDate     DateTime?
+  preferredTime     String?
+  message           String?
+  consentAccepted   Boolean
+  status            LeadStatus @default(NEW)
   convertedClientId String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  convertedClient   User?      @relation("LeadConvertedClient", fields: [convertedClientId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([email])
   @@index([phone])
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -106,4 +126,58 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model ClientProfile {
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
+  dateOfBirth            DateTime?
+  gender                 String?
+  address                String?
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  occupation             String?
+  lifestyle              String?
+  primaryGoal            String?
+  height                 Decimal?
+  weight                 Decimal?
+  allergies              String?
+  foodPreferences        String?
+  foodRestrictions       String?
+  medicalConditions      String?
+  medications            String?
+  profileCompletionPercent Int    @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DieticianProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  qualification  String?
+  specialization String?
+  licenseNumber  String?
+  bio            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ClientDieticianAssignment {
+  id           String           @id @default(uuid())
+  clientId     String
+  dieticianId  String
+  status       AssignmentStatus @default(ACTIVE)
+  assignedAt   DateTime         @default(now())
+  unassignedAt DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  client       User             @relation("ClientAssignments", fields: [clientId], references: [id], onDelete: Cascade)
+  dietician    User             @relation("DieticianAssignments", fields: [dieticianId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([dieticianId])
+  @@index([status])
+  @@index([assignedAt])
 }

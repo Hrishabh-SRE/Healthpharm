@@ -8,6 +8,7 @@ export type LeadStatus = "NEW" | "CONTACTED" | "CONVERTED" | "CLOSED";
 export type LeadRecord = LeadInput & {
   id: string;
   consentAccepted: boolean;
+  convertedClientId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   status: LeadStatus;

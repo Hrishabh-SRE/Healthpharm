@@ -22,6 +22,12 @@ export const DASHBOARD_ROUTES = {
   CLIENT: "/client/dashboard",
 } as const;
 
+export const ADMIN_ROUTES = {
+  LEADS: "/admin/leads",
+  USERS: "/admin/users",
+  ASSIGNMENTS: "/admin/assignments",
+} as const;
+
 export const ROLE_DASHBOARD_ROUTES: Record<UserRole, string> = {
   [ROLES.ADMIN]: DASHBOARD_ROUTES.ADMIN,
   [ROLES.DIETICIAN]: DASHBOARD_ROUTES.DIETICIAN,

@@ -25,3 +25,12 @@ export async function createAuditLog(input: AuditInput): Promise<void> {
     },
   });
 }
+
+export async function listRecentAuditLogs(limit = 10) {
+  return prisma.auditLog.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: limit,
+  });
+}

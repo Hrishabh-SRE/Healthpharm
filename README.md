@@ -1,74 +1,55 @@
 # Healthcare Dietician Portal
 
 Healthcare Dietician Portal is a modular monolithic Next.js application for a healthcare/nutrition company.
-Phase 2 replaces mock persistence/auth infrastructure with PostgreSQL + Prisma + database-backed sessions while preserving the Phase 1 public website and placeholder dashboards.
 
-## Phase 2 Scope
+## Phase 3 Scope
 
-- PostgreSQL support and Prisma ORM setup
-- Initial Prisma schema and seed script
-- Database-backed users (replacing hardcoded mock users)
-- Database-backed opaque sessions (replacing in-memory sessions)
-- Real auth/session handling with secure HTTP-only cookies
-- Database-backed lead creation API with audit logging
-- Existing public website and placeholder dashboards preserved
+Phase 3 adds the **admin foundation** on top of completed Phase 2:
 
-## What Changed From Phase 1
+- Admin dashboard overview cards + recent activity
+- Admin lead management (`/admin/leads`)
+- Lead conversion into CLIENT user
+- Admin users management (`/admin/users`)
+- Client/Dietician profile creation on user creation
+- Admin assignment management (`/admin/assignments`)
+- Admin-only APIs under `/api/admin/*`
+- Audit logs for major admin actions
 
-- Added `prisma/schema.prisma` with `User`, `Session`, `Lead`, and `AuditLog` models plus enums and indexes.
-- Added `prisma/seed.ts` for seeded development users and sample leads.
-- Added `src/lib/db/prisma.ts` singleton Prisma client.
-- Added service layer under `src/lib/services` (`user`, `session`, `lead`, `audit-log`).
-- Replaced mock auth/session internals in `src/lib/auth` with real DB-backed implementation.
-- Updated `/api/auth/*` and `/api/public/leads` route handlers to use Zod + service layer + standardized API responses.
+## What Changed From Phase 2
 
-## Folder Structure
+- Prisma schema extended with:
+  - `ClientProfile`
+  - `DieticianProfile`
+  - `ClientDieticianAssignment`
+  - expanded `AuditAction` and new `AssignmentStatus`
+- Seed script updated with additional users/profiles/leads/assignment
+- New admin service layer methods for leads/users/assignments
+- New validation schemas for admin workflows
+- New admin UI components and pages
 
-```text
-src/
-  app/
-    (public)/...
-    (portal)/...
-    api/
-      auth/
-      public/leads/
-  components/
-    auth/
-    dashboard/
-    forms/
-    layout/
-    public/
-    shared/
-    ui/
-  content/
-  lib/
-    auth/
-    db/
-    services/
-    utils/
-    validation/
-  types/
-prisma/
-  schema.prisma
-  seed.ts
-```
+## New Database Models
+
+- `ClientProfile` (1:1 with `User` where role = CLIENT)
+- `DieticianProfile` (1:1 with `User` where role = DIETICIAN)
+- `ClientDieticianAssignment` (client <-> dietician assignment with `ACTIVE/INACTIVE`)
+
+Key business rule implemented:
+- A client can have only one `ACTIVE` assignment at a time.
 
 ## Tech Stack
 
-- Next.js (App Router)
-- TypeScript (strict mode)
-- Tailwind CSS
-- shadcn-style UI primitives (Button, Input, Card, etc.)
+- Next.js App Router
+- TypeScript strict mode
 - PostgreSQL
 - Prisma ORM
-- React Hook Form
-- Zod
-- ESLint + Prettier
-- bcryptjs for password hashing/verification
+- Tailwind CSS
+- shadcn-style UI primitives
+- React Hook Form + Zod
+- bcryptjs hashing
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Create `.env` from `.env.example`:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/healthcare_dietician_portal?schema=public"
@@ -76,107 +57,126 @@ SESSION_COOKIE_NAME="hdp_session"
 SESSION_MAX_AGE_DAYS="7"
 ```
 
-## Start PostgreSQL Locally
-
-Using Docker Compose:
+## Local Setup
 
 ```bash
+npm install
+cp .env.example .env
 docker compose up -d
+npm run db:generate
+npm run db:migrate -- --name phase3_admin_foundation
+npm run db:seed
+npm run dev
 ```
 
-This starts PostgreSQL at `localhost:5432` with:
-
-- DB: `healthcare_dietician_portal`
-- User: `postgres`
-- Password: `postgres`
-
-## Local Setup (Phase 2)
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Copy env:
-   ```bash
-   cp .env.example .env
-   ```
-3. Start PostgreSQL:
-   ```bash
-   docker compose up -d
-   ```
-4. Generate Prisma client:
-   ```bash
-   npm run db:generate
-   ```
-5. Run migrations:
-   ```bash
-   npm run db:migrate -- --name init_phase2
-   ```
-6. Seed database:
-   ```bash
-   npm run db:seed
-   ```
-7. Start app:
-   ```bash
-   npm run dev
-   ```
-
-## Seeded Development Credentials (Local Only)
-
-- Admin: `admin@example.com` / `password123`
-- Dietician: `dietician@example.com` / `password123`
-- Client: `client@example.com` / `password123`
-
-These credentials are for local development/testing only.
-
-## Auth Behavior (Phase 2)
-
-- Login submits to `POST /api/auth/login`
-- Credentials are validated against database users
-- Password verification uses hashed passwords (`bcryptjs`)
-- On login, app generates a cryptographically secure opaque session token
-- Only token hash is stored in `Session` table
-- Raw token is set in secure HTTP-only cookie
-- Session lookup validates non-revoked and non-expired session records
-- Role-based redirect after login:
-  - ADMIN -> `/admin/dashboard`
-  - DIETICIAN -> `/dietician/dashboard`
-  - CLIENT -> `/client/dashboard`
-
-## Role-Based Routing Rules
-
-- Logged-out users visiting `/admin/dashboard`, `/dietician/dashboard`, or `/client/dashboard` are redirected to `/login`.
-- Wrong-role access is handled consistently by redirecting users to their own dashboard route.
-
-## Lead API (Phase 2)
-
-- `POST /api/public/leads` validates payload with Zod.
-- Lead is stored in PostgreSQL via Prisma.
-- `AuditLog` is written with `LEAD_CREATED` action.
-- API returns success message:
-  - `Thank you. Your consultation request has been submitted. Our team will contact you soon.`
-
-## Verification Commands
+If you use Podman:
 
 ```bash
+podman machine start
+podman run -d \
+  --name healthcare-dietician-postgres \
+  -e POSTGRES_DB=healthcare_dietician_portal \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  docker.io/library/postgres:16
+```
+
+Then run the same `npm run db:*` commands.
+
+## Seeded Local Credentials
+
+Local development credentials only:
+
+- Admin: `admin@example.com` / `password123`
+- Dietician 1: `dietician@example.com` / `password123`
+- Dietician 2: `dietician2@example.com` / `password123`
+- Client 1: `client@example.com` / `password123`
+- Client 2: `client2@example.com` / `password123`
+
+## Admin Lead Management
+
+- Route: `/admin/leads`
+- APIs:
+  - `GET /api/admin/leads`
+  - `GET/PATCH /api/admin/leads/[leadId]`
+  - `POST /api/admin/leads/[leadId]/convert-to-client`
+- Supports search, status filtering, status update, and conversion.
+
+## Lead Conversion Flow
+
+Convert lead -> client performs:
+
+1. Create CLIENT `User` with hashed temporary password
+2. Create `ClientProfile`
+3. Update lead to `CONVERTED`
+4. Set `Lead.convertedClientId`
+5. Write audit logs:
+   - `USER_CREATED`
+   - `CLIENT_PROFILE_CREATED`
+   - `LEAD_CONVERTED_TO_CLIENT`
+
+Conversion is blocked if lead already converted or email already exists.
+
+## User Creation / Management
+
+- Route: `/admin/users`
+- APIs:
+  - `GET /api/admin/users`
+  - `POST /api/admin/users`
+  - `GET/PATCH /api/admin/users/[userId]`
+- Creating CLIENT auto-creates `ClientProfile`
+- Creating DIETICIAN auto-creates `DieticianProfile`
+- Deactivation sets user status to `INACTIVE` and revokes active sessions
+
+## Assignment Management
+
+- Route: `/admin/assignments`
+- APIs:
+  - `GET /api/admin/assignments`
+  - `POST /api/admin/assignments`
+  - `PATCH /api/admin/assignments/[assignmentId]`
+  - `GET /api/admin/clients`
+  - `GET /api/admin/dieticians`
+
+Rules:
+- Client must be active CLIENT
+- Dietician must be active DIETICIAN
+- Reject if client already has active assignment (`CLIENT_ALREADY_ASSIGNED`)
+- Deactivation sets status `INACTIVE` and `unassignedAt`
+- Audit logs:
+  - `CLIENT_ASSIGNED`
+  - `CLIENT_UNASSIGNED`
+
+## Testing Checklist
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
 npm run lint
 npm run build
 ```
 
+Manual checks:
+
+- Admin pages: `/admin/dashboard`, `/admin/leads`, `/admin/users`, `/admin/assignments`
+- Non-admin blocked from admin pages and `/api/admin/*`
+- Lead status updates and conversion
+- Converted leads cannot be converted twice
+- User creation for CLIENT/DIETICIAN creates corresponding profiles
+- Assignment creation and deactivation rules
+- Public website and role-based login still work
+
 ## Intentionally Not Built Yet
 
-- Full admin user management UI
-- Admin lead management UI
-- Lead-to-client conversion workflows
-- Client profile modules and portal feature tabs
-- Dietician client workspace
-- Questionnaire/chat, notes, clinical assessment
-- Diet recall, 24-hour diet review, QC table
+- Full client dashboard modules
+- Full dietician workspace modules
+- Notes, assessments, questionnaire/chat, diet recall, 24-hour diet, QC table
 - Diet plan builder
-- File uploads, payments, notifications
+- Uploads, notifications, payments, analytics-heavy modules
 
-## Next Phase Recommendation (Phase 3)
+## Next Phase Recommendation (Phase 4)
 
-- Build admin lead management and lead lifecycle flow (NEW -> CONTACTED -> CONVERTED/CLOSED)
-- Introduce user provisioning/conversion workflows
-- Start role-specific portal modules on top of this DB-backed foundation
+- Client dashboard profile read/write flows
+- Dietician dashboard assigned-client list and basic client view
