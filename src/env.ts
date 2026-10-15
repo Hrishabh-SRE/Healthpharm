@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const DEFAULT_SESSION_MAX_AGE_DAYS = 7;
+const MIN_CRON_SECRET_LENGTH = 16;
 
 const envSchema = z.object({
   DATABASE_URL: z
@@ -19,6 +20,9 @@ const envSchema = z.object({
     .int("SESSION_MAX_AGE_DAYS must be a whole number of days.")
     .positive("SESSION_MAX_AGE_DAYS must be greater than zero.")
     .default(DEFAULT_SESSION_MAX_AGE_DAYS),
+  CRON_SECRET: z
+    .string({ error: "CRON_SECRET is required." })
+    .min(MIN_CRON_SECRET_LENGTH, `CRON_SECRET must be at least ${MIN_CRON_SECRET_LENGTH} characters.`),
   NODE_ENV: z.enum(["development", "production", "test"]).optional(),
 });
 
