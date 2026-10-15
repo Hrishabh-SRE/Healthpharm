@@ -1,6 +1,17 @@
 import "dotenv/config";
 
-import { AssignmentStatus, PrismaClient, UserRole, UserStatus, LeadStatus, AuditAction } from "@prisma/client";
+import {
+  AssignmentStatus,
+  ClinicalAssessmentStatus,
+  QuestionThreadStatus,
+  PrismaClient,
+  UserRole,
+  UserStatus,
+  LeadStatus,
+  AuditAction,
+  NoteType,
+  NoteVisibility,
+} from "@prisma/client";
 
 import { hashPassword } from "../src/lib/auth/password";
 
@@ -268,10 +279,393 @@ async function seedAssignment(): Promise<void> {
   }
 }
 
+async function seedNotes(): Promise<void> {
+  const client = await prisma.user.findUnique({ where: { email: "client@example.com" } });
+  const clientTwo = await prisma.user.findUnique({ where: { email: "client2@example.com" } });
+  const dietician = await prisma.user.findUnique({ where: { email: "dietician@example.com" } });
+  const dieticianTwo = await prisma.user.findUnique({ where: { email: "dietician2@example.com" } });
+
+  if (!client || !dietician) {
+    return;
+  }
+
+  const seedNotesInput: Array<{
+    clientId: string;
+    authorId: string;
+    title: string | null;
+    content: string;
+    visibility: NoteVisibility;
+    noteType: NoteType;
+  }> = [
+    {
+      clientId: client.id,
+      authorId: dietician.id,
+      title: "Private progress tracking",
+      content: "Client shows good adherence on weekdays. Recheck meal timing next visit.",
+      visibility: NoteVisibility.PRIVATE,
+      noteType: NoteType.INTERNAL,
+    },
+    {
+      clientId: client.id,
+      authorId: dietician.id,
+      title: "Weekly focus",
+      content: "Please keep hydration above 2.5L and continue evening walks this week.",
+      visibility: NoteVisibility.SHARED_WITH_CLIENT,
+      noteType: NoteType.FOLLOW_UP,
+    },
+  ];
+
+  if (clientTwo && dieticianTwo) {
+    seedNotesInput.push({
+      clientId: clientTwo.id,
+      authorId: dieticianTwo.id,
+      title: "Welcome guidance",
+      content: "Start with simple breakfast consistency and food log tracking.",
+      visibility: NoteVisibility.SHARED_WITH_CLIENT,
+      noteType: NoteType.GENERAL,
+    });
+  }
+
+  for (const noteInput of seedNotesInput) {
+    const existing = await prisma.note.findFirst({
+      where: {
+        clientId: noteInput.clientId,
+        authorId: noteInput.authorId,
+        title: noteInput.title,
+        content: noteInput.content,
+        visibility: noteInput.visibility,
+        noteType: noteInput.noteType,
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      const created = await prisma.note.create({
+        data: noteInput,
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: noteInput.authorId,
+          action: AuditAction.NOTE_CREATED,
+          entityType: "Note",
+          entityId: created.id,
+          metadata: {
+            clientId: noteInput.clientId,
+            seeded: true,
+          },
+        },
+      });
+    }
+  }
+}
+
+async function seedQuestionnaire(): Promise<void> {
+  const client = await prisma.user.findUnique({ where: { email: "client@example.com" } });
+  const clientTwo = await prisma.user.findUnique({ where: { email: "client2@example.com" } });
+  const dietician = await prisma.user.findUnique({ where: { email: "dietician@example.com" } });
+  const dieticianTwo = await prisma.user.findUnique({ where: { email: "dietician2@example.com" } });
+
+  if (!client || !dietician) {
+    return;
+  }
+
+  const primaryThread = await prisma.questionThread.upsert({
+    where: {
+      clientId_dieticianId: {
+        clientId: client.id,
+        dieticianId: dietician.id,
+      },
+    },
+    create: {
+      clientId: client.id,
+      dieticianId: dietician.id,
+      status: QuestionThreadStatus.OPEN,
+    },
+    update: {
+      status: QuestionThreadStatus.OPEN,
+    },
+  });
+
+  const primaryMessages = [
+    {
+      senderId: client.id,
+      messageBody: "Can I have rice for dinner?",
+    },
+    {
+      senderId: dietician.id,
+      messageBody: "Yes, but keep the portion controlled and pair it with protein and vegetables.",
+    },
+    {
+      senderId: client.id,
+      messageBody: "Should I prefer brown rice or white rice on workout days?",
+    },
+  ] as const;
+
+  for (const messageInput of primaryMessages) {
+    const existing = await prisma.message.findFirst({
+      where: {
+        threadId: primaryThread.id,
+        senderId: messageInput.senderId,
+        messageBody: messageInput.messageBody,
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      const created = await prisma.message.create({
+        data: {
+          threadId: primaryThread.id,
+          senderId: messageInput.senderId,
+          messageBody: messageInput.messageBody,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: messageInput.senderId,
+          action: AuditAction.MESSAGE_SENT,
+          entityType: "Message",
+          entityId: created.id,
+          metadata: {
+            seeded: true,
+            threadId: primaryThread.id,
+          },
+        },
+      });
+    }
+  }
+
+  const latestPrimaryMessage = await prisma.message.findFirst({
+    where: { threadId: primaryThread.id },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  await prisma.questionThread.update({
+    where: { id: primaryThread.id },
+    data: {
+      lastMessageAt: latestPrimaryMessage?.createdAt ?? primaryThread.updatedAt,
+    },
+  });
+
+  if (clientTwo && dieticianTwo) {
+    const secondaryThread = await prisma.questionThread.upsert({
+      where: {
+        clientId_dieticianId: {
+          clientId: clientTwo.id,
+          dieticianId: dieticianTwo.id,
+        },
+      },
+      create: {
+        clientId: clientTwo.id,
+        dieticianId: dieticianTwo.id,
+        status: QuestionThreadStatus.OPEN,
+      },
+      update: {
+        status: QuestionThreadStatus.OPEN,
+      },
+    });
+
+    const existingSecondaryMessage = await prisma.message.findFirst({
+      where: {
+        threadId: secondaryThread.id,
+        senderId: clientTwo.id,
+        messageBody: "Can you suggest a simple breakfast plan?",
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
+
+    if (!existingSecondaryMessage) {
+      const created = await prisma.message.create({
+        data: {
+          threadId: secondaryThread.id,
+          senderId: clientTwo.id,
+          messageBody: "Can you suggest a simple breakfast plan?",
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          userId: clientTwo.id,
+          action: AuditAction.MESSAGE_SENT,
+          entityType: "Message",
+          entityId: created.id,
+          metadata: {
+            seeded: true,
+            threadId: secondaryThread.id,
+          },
+        },
+      });
+    }
+
+    const latestSecondaryMessage = await prisma.message.findFirst({
+      where: { threadId: secondaryThread.id },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    await prisma.questionThread.update({
+      where: { id: secondaryThread.id },
+      data: {
+        lastMessageAt: latestSecondaryMessage?.createdAt ?? secondaryThread.updatedAt,
+      },
+    });
+  }
+}
+
+async function seedClinicalAssessments(): Promise<void> {
+  const client = await prisma.user.findUnique({ where: { email: "client@example.com" } });
+  const clientTwo = await prisma.user.findUnique({ where: { email: "client2@example.com" } });
+  const dietician = await prisma.user.findUnique({ where: { email: "dietician@example.com" } });
+  const dieticianTwo = await prisma.user.findUnique({ where: { email: "dietician2@example.com" } });
+
+  if (!client || !dietician) {
+    return;
+  }
+
+  const clientOneAssessment = await prisma.clinicalAssessment.upsert({
+    where: { clientId: client.id },
+    create: {
+      clientId: client.id,
+      createdById: client.id,
+      updatedById: dietician.id,
+      reviewedById: dietician.id,
+      status: ClinicalAssessmentStatus.REVIEWED,
+      chiefConcern: "Weight management with better energy.",
+      currentSymptoms: "Late evening hunger and bloating after dinner.",
+      currentMedications: "No regular medications.",
+      medicalHistory: "No major chronic condition reported.",
+      allergies: "No known allergies.",
+      familyHistory: "Family history of diabetes.",
+      sleepPattern: "Sleep duration around 6-7 hours.",
+      stressLevel: "Moderate work stress.",
+      activityLevel: "Walks 4 days per week.",
+      height: 165,
+      weight: 67.5,
+      bmi: 24.8,
+      fastingBloodSugar: 95,
+      hba1c: 5.6,
+      totalCholesterol: 182,
+      clinicalObservations: "Good motivation, moderate adherence required.",
+      assessmentSummary: "Needs meal timing consistency and protein balancing.",
+      nutritionDiagnosis: "Inconsistent meal structure with high evening hunger.",
+      dieticianRecommendations: "Add protein at breakfast and track portions at dinner.",
+      followUpRecommendations: "Follow up in 2 weeks with meal log.",
+      reviewedAt: new Date(),
+    },
+    update: {
+      updatedById: dietician.id,
+      reviewedById: dietician.id,
+      status: ClinicalAssessmentStatus.REVIEWED,
+      chiefConcern: "Weight management with better energy.",
+      currentSymptoms: "Late evening hunger and bloating after dinner.",
+      currentMedications: "No regular medications.",
+      medicalHistory: "No major chronic condition reported.",
+      allergies: "No known allergies.",
+      familyHistory: "Family history of diabetes.",
+      sleepPattern: "Sleep duration around 6-7 hours.",
+      stressLevel: "Moderate work stress.",
+      activityLevel: "Walks 4 days per week.",
+      height: 165,
+      weight: 67.5,
+      bmi: 24.8,
+      fastingBloodSugar: 95,
+      hba1c: 5.6,
+      totalCholesterol: 182,
+      clinicalObservations: "Good motivation, moderate adherence required.",
+      assessmentSummary: "Needs meal timing consistency and protein balancing.",
+      nutritionDiagnosis: "Inconsistent meal structure with high evening hunger.",
+      dieticianRecommendations: "Add protein at breakfast and track portions at dinner.",
+      followUpRecommendations: "Follow up in 2 weeks with meal log.",
+      reviewedAt: new Date(),
+    },
+  });
+
+  const createdAuditExists = await prisma.auditLog.findFirst({
+    where: {
+      action: AuditAction.CLINICAL_ASSESSMENT_CREATED,
+      entityId: clientOneAssessment.id,
+      metadata: {
+        path: ["seeded"],
+        equals: true,
+      },
+    },
+    select: { id: true },
+  });
+  if (!createdAuditExists) {
+    await prisma.auditLog.create({
+      data: {
+        userId: client.id,
+        action: AuditAction.CLINICAL_ASSESSMENT_CREATED,
+        entityType: "ClinicalAssessment",
+        entityId: clientOneAssessment.id,
+        metadata: {
+          seeded: true,
+          clientId: client.id,
+        },
+      },
+    });
+  }
+
+  if (clientTwo && dieticianTwo) {
+    const clientTwoAssessment = await prisma.clinicalAssessment.upsert({
+      where: { clientId: clientTwo.id },
+      create: {
+        clientId: clientTwo.id,
+        createdById: clientTwo.id,
+        updatedById: clientTwo.id,
+        status: ClinicalAssessmentStatus.DRAFT,
+        chiefConcern: "Improve breakfast routine and morning energy.",
+        activityLevel: "Lightly active",
+        height: 160,
+        weight: 71,
+      },
+      update: {
+        updatedById: clientTwo.id,
+        status: ClinicalAssessmentStatus.DRAFT,
+        chiefConcern: "Improve breakfast routine and morning energy.",
+        activityLevel: "Lightly active",
+        height: 160,
+        weight: 71,
+      },
+    });
+
+    const createdAuditExistsTwo = await prisma.auditLog.findFirst({
+      where: {
+        action: AuditAction.CLINICAL_ASSESSMENT_CREATED,
+        entityId: clientTwoAssessment.id,
+        metadata: {
+          path: ["seeded"],
+          equals: true,
+        },
+      },
+      select: { id: true },
+    });
+    if (!createdAuditExistsTwo) {
+      await prisma.auditLog.create({
+        data: {
+          userId: clientTwo.id,
+          action: AuditAction.CLINICAL_ASSESSMENT_CREATED,
+          entityType: "ClinicalAssessment",
+          entityId: clientTwoAssessment.id,
+          metadata: {
+            seeded: true,
+            clientId: clientTwo.id,
+          },
+        },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   await seedUsers();
   await seedLeads();
   await seedAssignment();
+  await seedNotes();
+  await seedQuestionnaire();
+  await seedClinicalAssessments();
 
   console.log("Local development credentials only:");
   console.log("");

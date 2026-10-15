@@ -1,5 +1,5 @@
 import { requireClientApi } from "@/lib/auth/guards";
-import { getClientProfileBundle } from "@/lib/services/client-profile.service";
+import { getClientDashboardSummary } from "@/lib/services/client-dashboard.service";
 import { errorResponse, successResponse } from "@/lib/utils/api-response";
 
 export const runtime = "nodejs";
@@ -10,15 +10,10 @@ export async function GET(): Promise<Response> {
     return auth.error;
   }
 
-  const profile = await getClientProfileBundle(auth.user.id);
-  if (!profile) {
+  const summary = await getClientDashboardSummary(auth.user.id);
+  if (!summary) {
     return errorResponse("NOT_FOUND", "Client profile not found.", 404);
   }
 
-  return successResponse({
-    user: profile.user,
-    clientProfile: profile.clientProfile,
-    assignedDietician: profile.assignedDietician,
-    profileCompletionPercent: profile.clientProfile?.profileCompletionPercent ?? 0,
-  });
+  return successResponse(summary);
 }

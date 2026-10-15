@@ -15,9 +15,27 @@ const tabs = [
 
 type ClientWorkspaceTabsProps = {
   profileTab: React.JSX.Element;
+  notesTab: React.JSX.Element;
+  clinicalAssessmentTab: React.JSX.Element;
+  questionnaireTab: React.JSX.Element;
 };
 
-export function ClientWorkspaceTabs({ profileTab }: ClientWorkspaceTabsProps): React.JSX.Element {
+const placeholderMessages: Record<
+  Exclude<(typeof tabs)[number], "Profile" | "Notes" | "Questionnaire" | "Clinical Assessment">,
+  string
+> = {
+  "Diet Recall": "Diet Recall will be added in a later phase.",
+  "24 Hour Diet": "24 Hour Diet will be added in a later phase.",
+  "QC Table": "QC Table will be added in a later phase.",
+  "Make Diet": "Make Diet will be added in a later phase.",
+};
+
+export function ClientWorkspaceTabs({
+  profileTab,
+  notesTab,
+  clinicalAssessmentTab,
+  questionnaireTab,
+}: ClientWorkspaceTabsProps): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Profile");
 
   return (
@@ -37,11 +55,18 @@ export function ClientWorkspaceTabs({ profileTab }: ClientWorkspaceTabsProps): R
         ))}
       </div>
 
-      {activeTab === "Profile" ? (
-        profileTab
-      ) : (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">{activeTab} will be added in a later phase.</div>
-      )}
+      {activeTab === "Profile" ? profileTab : null}
+      {activeTab === "Notes" ? notesTab : null}
+      {activeTab === "Clinical Assessment" ? clinicalAssessmentTab : null}
+      {activeTab === "Questionnaire" ? questionnaireTab : null}
+      {activeTab !== "Profile" &&
+      activeTab !== "Notes" &&
+      activeTab !== "Clinical Assessment" &&
+      activeTab !== "Questionnaire" ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          {placeholderMessages[activeTab as keyof typeof placeholderMessages]}
+        </div>
+      ) : null}
     </div>
   );
 }

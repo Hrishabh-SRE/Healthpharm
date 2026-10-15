@@ -5,7 +5,7 @@ import { ServiceCard } from "@/components/public/ServiceCard";
 
 export function ServicesSection(): React.JSX.Element {
   return (
-    <Section>
+    <Section className="bg-gradient-to-b from-blue-50/70 via-white to-white">
       <Container>
         <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Our Services</h2>
         <p className="mt-2 text-slate-600">Personalized programs designed to support different health and nutrition goals.</p>

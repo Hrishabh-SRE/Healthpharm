@@ -1,168 +1,125 @@
 # Healthcare Dietician Portal
 
-Healthcare Dietician Portal is a modular monolithic Next.js app for a healthcare/nutrition company.
+Healthcare Dietician Portal is a phased Next.js application for nutrition workflows across public, client, dietician, and admin experiences.
 
-## Phase 4 Scope
+## Phase 7 Scope
 
-Phase 4 adds the first real client and dietician portal workflows on top of completed Phase 3:
+Phase 7 adds the **Clinical Assessment** module:
 
-- Client dashboard with real profile completion and assignment summary
-- Client profile page with editable sections and persistence
-- Dietician dashboard with assigned-client overview + search/filter
-- Dietician assigned-client workspace shell with full tab structure
-- Assignment-based authorization for dietician access to client data
-- `PROFILE_UPDATED` audit logging for profile updates
+- Client can create/update their own clinical assessment while status is `DRAFT`
+- Client can submit assessment for dietician review
+- Dietician can view/update assessment for assigned clients
+- Dietician can mark assessment as `REVIEWED`
+- Dietician can finalize assessment as `FINALIZED`
+- Locked behavior enforced after submission/review/finalization for client edits
+- Audit logging for create/update/submit/review/finalize
 
-## What Changed From Phase 3
+## What Changed From Phase 6
 
-- `ClientProfile` schema expanded with practical personal/basic/body/medical/other fields
-- `AuditAction` expanded with `PROFILE_UPDATED`
-- New client and dietician APIs under `/api/client/*` and `/api/dietician/*`
-- New profile validation (`Zod`) and service-layer profile update flows
-- New client and dietician portal components/pages replacing placeholders
-- Sidebar navigation updated for CLIENT and DIETICIAN roles
+- Added `ClinicalAssessment` database model and `ClinicalAssessmentStatus` lifecycle.
+- Added client and dietician clinical assessment APIs.
+- Added shared clinical assessment form sections/components for reuse.
+- Made Clinical Assessment functional in client dashboard and dietician workspace.
+- Added dashboard indicators for clinical assessment state and pending dietician review.
 
-## Database Updates (Phase 4)
+## ClinicalAssessment Model
 
-### Updated Enum
+Core fields:
 
-- `AuditAction` now includes:
-  - `PROFILE_UPDATED`
+- identity: `id`, `clientId`, `version`
+- ownership: `createdById`, `updatedById`, `reviewedById`, `finalizedById`
+- status: `DRAFT`, `SUBMITTED`, `REVIEWED`, `FINALIZED`
+- client-reported medical/lifestyle/vitals/lab fields
+- dietician professional fields
+- timestamps: `submittedAt`, `reviewedAt`, `finalizedAt`, `createdAt`, `updatedAt`
 
-### Updated `ClientProfile` fields
+Indexes:
 
-Added/used profile fields include:
+- unique: `clientId`
+- indexes: `status`, `submittedAt`, `reviewedAt`, `finalizedAt`, `updatedAt`
 
-- Personal: `dateOfBirth`, `gender`, `maritalStatus`, `bloodGroup`, `isChildAccount`, `primaryContact`, `alternateContact`, `profession`, `familyMemberOnboarded`
-- Basic: `height`, `weight`
-- Body: `fatPercentage`, `visceralFat`, `restingMetabolismKcal`, `bodyAge`, `fatMassKg`, `totalSubcutaneousFatPercentage`, `subcutaneousFatTrunkPercentage`, `subcutaneousFatArmsPercentage`, `subcutaneousFatLegsPercentage`, `totalSkeletalMusclePercentage`, `skeletalMuscleTrunkPercentage`, `skeletalMuscleArmsPercentage`, `skeletalMuscleLegsPercentage`, `bmi`, `fatFreeMassKg`, `waistInch`, `hipInch`, `waterContentPercentage`, `boneWeightKg`
-- Medical: `primaryGoal`, `otherGoal`, `clientMedicalCondition`, `parentMedicalConditionAndSymptoms`, `otherMedicalConditions`, `clientMedicalSymptoms`
-- Other: `activityState`, `intensity`, `coldFrequency`, `bloodPressure`, `systolicBp`, `diastolicBp`, `healthRating`, `fitnessRating`, `remarks`
-- Metadata: `profileCompletionPercent`, `createdAt`, `updatedAt`
+## Clinical Assessment Status Lifecycle
 
-Most fields remain nullable for gradual profile completion.
+Implemented lifecycle:
 
-## Client Profile Behavior
+- `DRAFT -> SUBMITTED` (client submit endpoint)
+- `DRAFT or SUBMITTED -> REVIEWED` (dietician review endpoint)
+- `REVIEWED -> FINALIZED` (dietician finalize endpoint)
 
-Routes:
+Invalid transitions are rejected with `INVALID_STATUS_TRANSITION`.
 
-- `/client/dashboard`
-- `/client/profile`
+## Client Clinical Assessment Behavior
 
-APIs:
+Routes and APIs:
 
-- `GET /api/client/dashboard`
-- `GET /api/client/profile`
-- `PATCH /api/client/profile`
-
-Behavior:
-
-- Client can view and update only their own profile
-- Profile uses RHF + Zod validation
-- Profile completion is recalculated on every update
-- `PROFILE_UPDATED` audit log is created on successful updates
-- Dashboard shows completion %, assigned dietician, and phase-gated cards
-
-## Dietician Assigned-Client Behavior
-
-Routes:
-
-- `/dietician/dashboard`
-- `/dietician/clients`
-- `/dietician/clients/[clientId]`
-
-APIs:
-
-- `GET /api/dietician/dashboard`
-- `GET /api/dietician/clients`
-- `GET /api/dietician/clients/[clientId]`
-- `GET /api/dietician/clients/[clientId]/profile`
-- `PATCH /api/dietician/clients/[clientId]/profile`
+- page: `/client/clinical-assessment`
+- `GET /api/client/clinical-assessment`
+- `PATCH /api/client/clinical-assessment`
+- `POST /api/client/clinical-assessment/submit`
 
 Behavior:
 
-- Dietician sees only actively assigned clients
-- Search supports first name, last name, email, phone
-- Optional filter for incomplete profiles
-- Workspace shows tabs:
-  - Profile (functional)
-  - Notes (placeholder)
-  - Clinical Assessment (placeholder)
-  - Questionnaire (placeholder)
-  - Diet Recall (placeholder)
-  - 24 Hour Diet (placeholder)
-  - QC Table (placeholder)
-  - Make Diet (placeholder)
+- Client can edit only own assessment.
+- Client can update only self-report fields via client schema.
+- Client cannot update status directly in `PATCH`.
+- Client cannot update dietician-only fields.
+- After `SUBMITTED`, `REVIEWED`, or `FINALIZED`, client edits are blocked.
+- Client sees dietician summary/recommendations once reviewed/finalized.
 
-## Assignment Authorization Rule
+## Dietician Clinical Assessment Behavior
 
-- `assertDieticianCanAccessClient(dieticianUserId, clientUserId)` checks active assignment before dietician can access/update a client profile.
-- `assertClientCanAccessOwnData(loggedInUserId, targetClientId)` enforces self-access for client profile ownership checks.
-- Dietician client APIs rely on centralized assignment checks in the service layer.
+Routes and APIs:
 
-## Tech Stack
+- workspace tab: `/dietician/clients/[clientId]` -> Clinical Assessment tab
+- `GET /api/dietician/clients/[clientId]/clinical-assessment`
+- `PATCH /api/dietician/clients/[clientId]/clinical-assessment`
+- `POST /api/dietician/clients/[clientId]/clinical-assessment/review`
+- `POST /api/dietician/clients/[clientId]/clinical-assessment/finalize`
 
-- Next.js App Router
-- TypeScript strict mode
-- PostgreSQL
-- Prisma ORM
-- Tailwind CSS
-- shadcn-style UI primitives
-- React Hook Form + Zod
-- bcryptjs hashing
+Behavior:
 
-## Environment Variables
+- Access allowed only for actively assigned clients.
+- Dietician can create if missing and update both client fields + professional fields.
+- Dietician can review and finalize with status transition checks.
+- Finalized assessments are read-only for edit in this phase.
 
-Create `.env` from `.env.example`:
+## Authorization Rules
 
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/healthcare_dietician_portal?schema=public"
-SESSION_COOKIE_NAME="hdp_session"
-SESSION_MAX_AGE_DAYS="7"
-```
+- Client access is self-scoped (own assessment only).
+- Dietician APIs reuse `assertDieticianCanAccessClient`.
+- Backend enforces role and assignment checks.
+- Wrong-role access returns guarded auth/forbidden errors.
+
+## Audit Actions Added
+
+- `CLINICAL_ASSESSMENT_CREATED`
+- `CLINICAL_ASSESSMENT_UPDATED`
+- `CLINICAL_ASSESSMENT_SUBMITTED`
+- `CLINICAL_ASSESSMENT_REVIEWED`
+- `CLINICAL_ASSESSMENT_FINALIZED`
 
 ## Local Setup
 
 ```bash
 npm install
 cp .env.example .env
-docker compose up -d
 npm run db:generate
-npm run db:migrate -- --name phase4_client_dietician_portal
+npm run db:migrate -- --name phase7_clinical_assessment_module
 npm run db:seed
 npm run dev
 ```
 
-If you use Podman:
+## Seeded Credentials
 
-```bash
-podman machine start
-podman run -d \
-  --name healthcare-dietician-postgres \
-  -e POSTGRES_DB=healthcare_dietician_portal \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  docker.io/library/postgres:16
-```
+- `admin@example.com / password123`
+- `dietician@example.com / password123`
+- `dietician2@example.com / password123`
+- `client@example.com / password123`
+- `client2@example.com / password123`
 
-Then run the same `npm run db:*` commands.
+## Manual Testing (Phase 7)
 
-## Seeded Local Credentials
-
-Local development credentials only:
-
-- Admin: `admin@example.com` / `password123`
-- Dietician 1: `dietician@example.com` / `password123`
-- Dietician 2: `dietician2@example.com` / `password123`
-- Client 1: `client@example.com` / `password123`
-- Client 2: `client2@example.com` / `password123`
-
-Seed includes active assignments for local testing.
-
-## How To Test (Phase 4)
-
-Run:
+Run required checks:
 
 ```bash
 npm run db:generate
@@ -172,42 +129,30 @@ npm run lint
 npm run build
 ```
 
-Manual checks:
+Then verify:
 
-- Client:
-  - Login as `client@example.com`
-  - Verify redirect to `/client/dashboard`
-  - Open `/client/profile`, update fields, verify persistence and completion changes
-- Dietician:
-  - Login as `dietician@example.com`
-  - Verify `/dietician/dashboard` shows assigned clients only
-  - Search assigned clients and open `/dietician/clients/[clientId]`
-  - Verify only Profile tab is functional and other tabs are placeholders
-  - Update assigned client profile and verify update persists
-- Authorization:
-  - Dietician cannot fetch/update profile of unassigned client via API
-  - Client cannot access another client profile via client APIs
-- Regression:
-  - Admin pages still work
-  - Public website and login/role redirects still work
+- Client can open dashboard and clinical assessment page.
+- Client can save draft while `DRAFT`.
+- Client can submit for review and becomes locked.
+- Client cannot edit after `SUBMITTED/REVIEWED/FINALIZED`.
+- Client cannot send dietician-only fields through client API.
+- Dietician can view/edit assigned client assessment.
+- Dietician can mark reviewed and finalize with valid transition.
+- Unassigned dietician access is denied.
+- Notes/questionnaire/profile/admin/public flows still work.
 
 ## Intentionally Not Built Yet
 
-- Notes functionality
-- Clinical Assessment functionality
-- Questionnaire/chat
 - Diet Recall
 - 24 Hour Diet
 - QC Table
 - Make Diet / Diet Plan Builder
-- File uploads
+- File uploads/lab report uploads
 - Notifications
 - Analytics
 - Payments
+- Realtime collaboration
 
-## Next Phase Recommendation (Phase 5)
+## Next Phase Recommendation (Phase 8)
 
-- Notes tab implementation
-- Shared and private notes model
-- Dietician note create/read/update flows
-- Client visibility rules for shared notes
+After profile, notes, questionnaire, and clinical assessment, the next recommended phase is **Diet Recall**.

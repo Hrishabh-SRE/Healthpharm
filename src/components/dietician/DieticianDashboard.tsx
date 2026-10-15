@@ -14,6 +14,8 @@ type Payload = {
     totalAssigned: number;
     activeAssigned: number;
     incompleteProfiles: number;
+    pendingQuestionsCount: number;
+    pendingClinicalAssessmentsCount: number;
     recentAssignedClients: Array<{ client: { firstName: string; lastName: string; email: string } }>;
   };
   error?: { message: string };
@@ -46,7 +48,7 @@ export function DieticianDashboard(): React.JSX.Element {
     <div className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Dietician Dashboard</h1>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Total Assigned Clients</CardTitle>
@@ -64,6 +66,18 @@ export function DieticianDashboard(): React.JSX.Element {
             <CardTitle className="text-base">Incomplete Profiles</CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-bold">{data.incompleteProfiles}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Pending Client Questions</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">{data.pendingQuestionsCount}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Submitted Assessments</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">{data.pendingClinicalAssessmentsCount}</CardContent>
         </Card>
       </div>
 
