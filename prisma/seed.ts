@@ -15,6 +15,47 @@ import {
 
 import { hashPassword } from "../src/lib/auth/password";
 
+const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/**
+ * This script writes well-known accounts with a shared throwaway password, so it
+ * must never touch a real environment. NODE_ENV alone is not enough: running
+ * `npm run db:seed` from a shell usually leaves it undefined, so the database
+ * host is checked too and anything non-local is refused by default.
+ */
+function assertSafeSeedEnvironment(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "DANGER: The development seed script cannot be run in production. Use db:bootstrap instead.",
+    );
+  }
+
+  if (process.env.ALLOW_REMOTE_DB_SEED === "true") {
+    return;
+  }
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DANGER: DATABASE_URL is not set. Refusing to run the development seed script.");
+  }
+
+  let host: string;
+  try {
+    host = new URL(databaseUrl).hostname;
+  } catch {
+    throw new Error("DANGER: DATABASE_URL could not be parsed. Refusing to run the development seed script.");
+  }
+
+  if (!LOCAL_DATABASE_HOSTS.has(host)) {
+    throw new Error(
+      `DANGER: The development seed script only runs against a local database, but DATABASE_URL points at "${host}". ` +
+        "Use db:bootstrap for real environments, or set ALLOW_REMOTE_DB_SEED=true to override deliberately.",
+    );
+  }
+}
+
+assertSafeSeedEnvironment();
+
 const prisma = new PrismaClient();
 
 async function seedUsers(): Promise<void> {
