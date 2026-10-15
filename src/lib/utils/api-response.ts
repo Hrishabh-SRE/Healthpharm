@@ -6,7 +6,12 @@ export function successResponse<T>(data: T, status = 200): NextResponse {
   return NextResponse.json({ success: true, data }, { status });
 }
 
-export function errorResponse(code: ApiErrorCode, message: string, status = 400): NextResponse {
+export function errorResponse(
+  code: ApiErrorCode,
+  message: string,
+  status = 400,
+  headers?: HeadersInit,
+): NextResponse {
   return NextResponse.json(
     {
       success: false,
@@ -15,6 +20,6 @@ export function errorResponse(code: ApiErrorCode, message: string, status = 400)
         message,
       },
     },
-    { status },
+    { status, headers },
   );
 }

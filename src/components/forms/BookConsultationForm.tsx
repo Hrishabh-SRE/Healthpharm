@@ -45,10 +45,15 @@ export function BookConsultationForm(): React.JSX.Element {
 
     const payload = (await response.json()) as {
       success: boolean;
+      error?: { code: string; message: string };
       data?: { message?: string };
     };
     if (!response.ok || !payload.success) {
-      setServerError("Unable to submit your request at the moment. Please try again.");
+      setServerError(
+        response.status === 429
+          ? (payload.error?.message ?? "Too many requests. Please try again later.")
+          : "Unable to submit your request at the moment. Please try again.",
+      );
       return;
     }
 
