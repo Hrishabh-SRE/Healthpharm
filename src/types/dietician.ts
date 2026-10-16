@@ -6,6 +6,8 @@ export type DieticianAssignedClient = {
   phone: string | null;
   profileCompletionPercent: number;
   assignmentStatus: "ACTIVE" | "INACTIVE";
+  unreadQuestionnaireCount: number;
+  clinicalAssessmentStatus: "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED" | null;
   assignedAt: string;
   updatedAt: string;
 };

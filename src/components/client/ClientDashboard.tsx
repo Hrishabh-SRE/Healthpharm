@@ -14,19 +14,28 @@ type DashboardPayload = {
     user: { firstName: string; lastName: string };
     profileCompletionPercent: number;
     assignedDietician?: { firstName: string; lastName: string } | null;
+    unreadQuestionnaireCount: number;
+    clinicalAssessmentStatus: "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED" | null;
   };
   error?: { message: string };
 };
 
 const comingSoonCards = [
-  "Notes",
-  "Clinical Assessment",
-  "Questionnaire",
   "Diet Recall",
   "24 Hour Diet",
   "QC Table",
   "Diet Plan",
 ];
+
+type ClinicalStatus = "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED" | null;
+
+function getClinicalAssessmentText(status: ClinicalStatus) {
+  if (!status) return "Not started";
+  if (status === "DRAFT") return "Draft in progress";
+  if (status === "SUBMITTED") return "Submitted for review";
+  if (status === "REVIEWED") return "Reviewed";
+  return "Finalized";
+}
 
 export function ClientDashboard(): React.JSX.Element {
   const [data, setData] = useState<DashboardPayload["data"]>();
@@ -66,6 +75,43 @@ export function ClientDashboard(): React.JSX.Element {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link href={CLIENT_ROUTES.NOTES} className="text-sm font-semibold text-primary hover:text-primary-dark">
+              Open Notes
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Clinical Assessment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-sm text-slate-600">
+              Status: {getClinicalAssessmentText(data.clinicalAssessmentStatus)}
+            </p>
+            <Link href={CLIENT_ROUTES.CLINICAL_ASSESSMENT} className="text-sm font-semibold text-primary hover:text-primary-dark">
+              Open Clinical Assessment
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Questionnaire / Doubts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-sm text-slate-600">Unread replies: {data.unreadQuestionnaireCount}</p>
+            <Link href={CLIENT_ROUTES.QUESTIONNAIRE} className="text-sm font-semibold text-primary hover:text-primary-dark">
+              Open Questionnaire
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>

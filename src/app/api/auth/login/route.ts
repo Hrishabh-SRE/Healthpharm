@@ -5,10 +5,24 @@ import { loginSchema } from "@/lib/validation/auth.schema";
 import { setSessionCookie } from "@/lib/auth/session";
 import { errorResponse, successResponse } from "@/lib/utils/api-response";
 import { getDashboardRouteForRole, loginWithCredentials } from "@/lib/auth/auth";
+import { RATE_LIMITS, getClientIp, rateLimit, resetRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const rateLimitKey = `login:${getClientIp(request)}`;
+  const limitResult = rateLimit(
+    rateLimitKey,
+    RATE_LIMITS.LOGIN.limit,
+    RATE_LIMITS.LOGIN.windowMs,
+  );
+
+  if (!limitResult.allowed) {
+    return errorResponse("TOO_MANY_REQUESTS", "Too many requests. Please try again later.", 429, {
+      "Retry-After": String(limitResult.retryAfterSeconds),
+    });
+  }
+
   try {
     const body = (await request.json()) as unknown;
     const parsed = loginSchema.safeParse(body);
@@ -28,6 +42,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     const cookieStore = await cookies();
     setSessionCookie(cookieStore, result.sessionToken);
+    resetRateLimit(rateLimitKey);
 
     return successResponse(
       {

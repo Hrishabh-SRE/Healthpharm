@@ -40,7 +40,11 @@ export function LoginForm(): React.JSX.Element {
       data?: { redirectTo: string };
     };
     if (!response.ok || !payload.success || !payload.data?.redirectTo) {
-      setServerError("Invalid email or password.");
+      setServerError(
+        response.status === 429
+          ? (payload.error?.message ?? "Too many requests. Please try again later.")
+          : "Invalid email or password.",
+      );
       return;
     }
 

@@ -17,9 +17,9 @@ export function ServiceCard({ service }: ServiceCardProps): React.JSX.Element {
     : PUBLIC_ROUTES.BOOK_CONSULTATION;
 
   return (
-    <Card className="h-full">
+    <Card className="h-full border-primary/10 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-blue-100/70">
       <CardHeader>
-        <CardTitle>{service.title}</CardTitle>
+        <CardTitle className="text-slate-900">{service.title}</CardTitle>
         <CardDescription>{service.shortDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -28,7 +28,7 @@ export function ServiceCard({ service }: ServiceCardProps): React.JSX.Element {
             <li key={benefit}>- {benefit}</li>
           ))}
         </ul>
-        <Button asChild variant="outline" className="w-full">
+        <Button asChild variant="outline" className="w-full border-primary/30 bg-primary/5 text-primary-dark hover:border-primary hover:bg-primary/10">
           <Link href={detailHref}>Learn More</Link>
         </Button>
       </CardContent>

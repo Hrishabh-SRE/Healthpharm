@@ -1,22 +1,16 @@
 import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 
+import { env } from "@/env";
+
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
-const DEFAULT_SESSION_COOKIE_NAME = "hdp_session";
-const DEFAULT_SESSION_MAX_AGE_DAYS = 7;
-
 export function getSessionCookieName(): string {
-  return process.env.SESSION_COOKIE_NAME ?? DEFAULT_SESSION_COOKIE_NAME;
+  return env.SESSION_COOKIE_NAME;
 }
 
 export function getSessionMaxAgeDays(): number {
-  const fromEnv = Number(process.env.SESSION_MAX_AGE_DAYS);
-  if (Number.isFinite(fromEnv) && fromEnv > 0) {
-    return fromEnv;
-  }
-
-  return DEFAULT_SESSION_MAX_AGE_DAYS;
+  return env.SESSION_MAX_AGE_DAYS;
 }
 
 export function getSessionMaxAgeSeconds(): number {
@@ -44,7 +38,7 @@ export function readSessionTokenFromCookieStore(cookieStore: CookieStore): strin
 export function setSessionCookie(cookieStore: CookieStore, token: string): void {
   cookieStore.set(getSessionCookieName(), token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: getSessionExpiryDate(),

@@ -31,6 +31,9 @@ export const ADMIN_ROUTES = {
 export const CLIENT_ROUTES = {
   DASHBOARD: "/client/dashboard",
   PROFILE: "/client/profile",
+  NOTES: "/client/notes",
+  QUESTIONNAIRE: "/client/questionnaire",
+  CLINICAL_ASSESSMENT: "/client/clinical-assessment",
 } as const;
 
 export const DIETICIAN_ROUTES = {

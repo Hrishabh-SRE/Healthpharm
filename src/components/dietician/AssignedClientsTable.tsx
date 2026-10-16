@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { ClinicalAssessmentStatusBadge } from "@/components/dietician/ClinicalAssessmentStatusBadge";
 import { ClientSearchFilters } from "@/components/dietician/ClientSearchFilters";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -10,7 +11,7 @@ import type { DieticianAssignedClient } from "@/types/dietician";
 
 type Payload = {
   success: boolean;
-  data?: { clients: Array<{ client: { id: string; firstName: string; lastName: string; email: string; phone: string | null; clientProfile: { profileCompletionPercent: number; updatedAt: string } | null }; status: string; assignedAt: string }> };
+  data?: { clients: Array<{ client: { id: string; firstName: string; lastName: string; email: string; phone: string | null; clientProfile: { profileCompletionPercent: number; updatedAt: string } | null }; status: string; assignedAt: string; unreadQuestionnaireCount?: number; clinicalAssessmentStatus?: "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED" | null }> };
   error?: { message: string };
 };
 
@@ -45,6 +46,8 @@ export function AssignedClientsTable(): React.JSX.Element {
         phone: item.client.phone,
         profileCompletionPercent: item.client.clientProfile?.profileCompletionPercent ?? 0,
         assignmentStatus: item.status as "ACTIVE" | "INACTIVE",
+        unreadQuestionnaireCount: item.unreadQuestionnaireCount ?? 0,
+        clinicalAssessmentStatus: item.clinicalAssessmentStatus ?? null,
         assignedAt: item.assignedAt,
         updatedAt: item.client.clientProfile?.updatedAt ?? item.assignedAt,
       })),
@@ -82,6 +85,8 @@ export function AssignedClientsTable(): React.JSX.Element {
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Assigned At</th>
                 <th className="px-3 py-2">Last Updated</th>
+                <th className="px-3 py-2">Unread Questions</th>
+                <th className="px-3 py-2">Clinical Assessment</th>
                 <th className="px-3 py-2">Action</th>
               </tr>
             </thead>
@@ -97,6 +102,14 @@ export function AssignedClientsTable(): React.JSX.Element {
                   <td className="px-3 py-2">{client.assignmentStatus}</td>
                   <td className="px-3 py-2">{new Date(client.assignedAt).toLocaleString()}</td>
                   <td className="px-3 py-2">{new Date(client.updatedAt).toLocaleString()}</td>
+                  <td className="px-3 py-2">{client.unreadQuestionnaireCount}</td>
+                  <td className="px-3 py-2">
+                    {client.clinicalAssessmentStatus ? (
+                      <ClinicalAssessmentStatusBadge status={client.clinicalAssessmentStatus} />
+                    ) : (
+                      <span className="text-slate-500">Not started</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <Link href={`/dietician/clients/${client.id}`} className="text-primary hover:text-primary-dark font-semibold">
                       Open

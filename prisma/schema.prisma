@@ -41,12 +41,47 @@ enum AuditAction {
   CLIENT_ASSIGNED
   CLIENT_UNASSIGNED
   PROFILE_UPDATED
+  NOTE_CREATED
+  NOTE_UPDATED
+  NOTE_DELETED
+  QUESTION_THREAD_CREATED
+  MESSAGE_SENT
+  MESSAGES_MARKED_READ
+  CLINICAL_ASSESSMENT_CREATED
+  CLINICAL_ASSESSMENT_UPDATED
+  CLINICAL_ASSESSMENT_SUBMITTED
+  CLINICAL_ASSESSMENT_REVIEWED
+  CLINICAL_ASSESSMENT_FINALIZED
   SESSION_REVOKED
 }
 
 enum AssignmentStatus {
   ACTIVE
   INACTIVE
+}
+
+enum NoteVisibility {
+  PRIVATE
+  SHARED_WITH_CLIENT
+}
+
+enum NoteType {
+  GENERAL
+  FOLLOW_UP
+  CLINICAL
+  INTERNAL
+}
+
+enum QuestionThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum ClinicalAssessmentStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  FINALIZED
 }
 
 model User {
@@ -68,6 +103,17 @@ model User {
   clientAssignments    ClientDieticianAssignment[] @relation("ClientAssignments")
   dieticianAssignments ClientDieticianAssignment[] @relation("DieticianAssignments")
   convertedLeads       Lead[]                    @relation("LeadConvertedClient")
+  authoredNotes        Note[]                    @relation("NoteAuthor")
+  clientNotes          Note[]                    @relation("NoteClient")
+  deletedNotes         Note[]                    @relation("NoteDeletedBy")
+  clientQuestionThreads QuestionThread[]         @relation("QuestionThreadClient")
+  dieticianQuestionThreads QuestionThread[]      @relation("QuestionThreadDietician")
+  sentMessages         Message[]
+  clientClinicalAssessment ClinicalAssessment?   @relation("ClinicalAssessmentClient")
+  createdClinicalAssessments ClinicalAssessment[] @relation("ClinicalAssessmentCreatedBy")
+  updatedClinicalAssessments ClinicalAssessment[] @relation("ClinicalAssessmentUpdatedBy")
+  reviewedClinicalAssessments ClinicalAssessment[] @relation("ClinicalAssessmentReviewedBy")
+  finalizedClinicalAssessments ClinicalAssessment[] @relation("ClinicalAssessmentFinalizedBy")
 
   @@index([role])
   @@index([status])
@@ -221,4 +267,139 @@ model ClientDieticianAssignment {
   @@index([dieticianId])
   @@index([status])
   @@index([assignedAt])
+}
+
+model Note {
+  id         String         @id @default(uuid())
+  clientId   String
+  authorId   String
+  title      String?
+  content    String
+  visibility NoteVisibility
+  noteType   NoteType
+  isDeleted  Boolean        @default(false)
+  deletedAt  DateTime?
+  deletedById String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  client     User           @relation("NoteClient", fields: [clientId], references: [id], onDelete: Cascade)
+  author     User           @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  deletedBy  User?          @relation("NoteDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([authorId])
+  @@index([visibility])
+  @@index([noteType])
+  @@index([isDeleted])
+  @@index([createdAt])
+}
+
+model QuestionThread {
+  id            String               @id @default(uuid())
+  clientId      String
+  dieticianId   String
+  status        QuestionThreadStatus @default(OPEN)
+  lastMessageAt DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  client        User                 @relation("QuestionThreadClient", fields: [clientId], references: [id], onDelete: Cascade)
+  dietician     User                 @relation("QuestionThreadDietician", fields: [dieticianId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@unique([clientId, dieticianId])
+  @@index([clientId])
+  @@index([dieticianId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id          String         @id @default(uuid())
+  threadId    String
+  senderId    String
+  messageBody String
+  isDeleted   Boolean        @default(false)
+  deletedAt   DateTime?
+  readAt      DateTime?
+  createdAt   DateTime       @default(now())
+  thread      QuestionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender      User           @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([senderId])
+  @@index([readAt])
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+model ClinicalAssessment {
+  id                      String                   @id @default(uuid())
+  clientId                String                   @unique
+  createdById             String?
+  updatedById             String?
+  reviewedById            String?
+  finalizedById           String?
+  status                  ClinicalAssessmentStatus @default(DRAFT)
+  version                 Int                      @default(1)
+  chiefConcern            String?
+  currentSymptoms         String?
+  currentMedications      String?
+  allergies               String?
+  medicalHistory          String?
+  familyHistory           String?
+  digestiveIssues         String?
+  sleepPattern            String?
+  stressLevel             String?
+  activityLevel           String?
+  menstrualHistory        String?
+  pregnancyOrLactation    String?
+  smokingAlcoholHistory   String?
+  foodIntolerances        String?
+  previousDietHistory     String?
+  height                  Decimal?
+  weight                  Decimal?
+  bmi                     Decimal?
+  waistCircumference      Decimal?
+  hipCircumference        Decimal?
+  bloodPressure           String?
+  systolicBp              Int?
+  diastolicBp             Int?
+  restingHeartRate        Int?
+  fastingBloodSugar       Decimal?
+  postMealBloodSugar      Decimal?
+  hba1c                   Decimal?
+  totalCholesterol        Decimal?
+  hdl                     Decimal?
+  ldl                     Decimal?
+  triglycerides           Decimal?
+  thyroidTsh              Decimal?
+  vitaminD                Decimal?
+  vitaminB12              Decimal?
+  hemoglobin              Decimal?
+  creatinine              Decimal?
+  sgpt                    Decimal?
+  sgot                    Decimal?
+  clinicalObservations    String?
+  assessmentSummary       String?
+  nutritionDiagnosis      String?
+  riskFlags               String?
+  dieticianRecommendations String?
+  followUpRecommendations String?
+  internalRemarks         String?
+  submittedAt             DateTime?
+  reviewedAt              DateTime?
+  finalizedAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  client                  User                     @relation("ClinicalAssessmentClient", fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy               User?                    @relation("ClinicalAssessmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy               User?                    @relation("ClinicalAssessmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  reviewedBy              User?                    @relation("ClinicalAssessmentReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  finalizedBy             User?                    @relation("ClinicalAssessmentFinalizedBy", fields: [finalizedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([submittedAt])
+  @@index([reviewedAt])
+  @@index([finalizedAt])
+  @@index([updatedAt])
 }

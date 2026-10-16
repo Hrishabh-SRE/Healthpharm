@@ -2,35 +2,47 @@ import { AssignmentStatus, UserRole } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { assertDieticianCanAccessClient } from "@/lib/services/assignment.service";
+import {
+  getClinicalAssessmentReviewCountForDietician,
+  getClinicalAssessmentStatusByAssignedClient,
+} from "@/lib/services/clinical-assessment.service";
 import { updateClientProfile } from "@/lib/services/client-profile.service";
+import {
+  getUnreadQuestionnaireCountByAssignedClient,
+  getUnreadQuestionnaireCountForDietician,
+} from "@/lib/services/questionnaire.service";
 
 export async function getDieticianDashboard(dieticianUserId: string) {
-  const assignments = await prisma.clientDieticianAssignment.findMany({
-    where: {
-      dieticianId: dieticianUserId,
-      status: AssignmentStatus.ACTIVE,
-    },
-    include: {
-      client: {
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          status: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
-          clientProfile: true,
+  const [assignments, pendingQuestionsCount, pendingClinicalAssessmentsCount] = await Promise.all([
+    prisma.clientDieticianAssignment.findMany({
+      where: {
+        dieticianId: dieticianUserId,
+        status: AssignmentStatus.ACTIVE,
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            status: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            lastLoginAt: true,
+            createdAt: true,
+            updatedAt: true,
+            clientProfile: true,
+          },
         },
       },
-    },
-    orderBy: {
-      assignedAt: "desc",
-    },
-  });
+      orderBy: {
+        assignedAt: "desc",
+      },
+    }),
+    getUnreadQuestionnaireCountForDietician(dieticianUserId),
+    getClinicalAssessmentReviewCountForDietician(dieticianUserId),
+  ]);
 
   const totalAssigned = assignments.length;
   const incompleteProfiles = assignments.filter(
@@ -41,6 +53,8 @@ export async function getDieticianDashboard(dieticianUserId: string) {
     totalAssigned,
     activeAssigned: totalAssigned,
     incompleteProfiles,
+    pendingQuestionsCount,
+    pendingClinicalAssessmentsCount,
     recentAssignedClients: assignments.slice(0, 5),
   };
 }
@@ -50,6 +64,10 @@ export async function searchAssignedClients(
   filters: { q?: string; incompleteOnly?: boolean },
 ) {
   const q = filters.q?.trim();
+  const [unreadByClient, clinicalByClient] = await Promise.all([
+    getUnreadQuestionnaireCountByAssignedClient(dieticianUserId),
+    getClinicalAssessmentStatusByAssignedClient(dieticianUserId),
+  ]);
 
   const assignments = await prisma.clientDieticianAssignment.findMany({
     where: {
@@ -89,10 +107,16 @@ export async function searchAssignedClients(
     },
   });
 
-  return assignments.filter((assignment) => {
-    if (!filters.incompleteOnly) return true;
-    return (assignment.client.clientProfile?.profileCompletionPercent ?? 0) < 100;
-  });
+  return assignments
+    .filter((assignment) => {
+      if (!filters.incompleteOnly) return true;
+      return (assignment.client.clientProfile?.profileCompletionPercent ?? 0) < 100;
+    })
+    .map((assignment) => ({
+      ...assignment,
+      unreadQuestionnaireCount: unreadByClient[assignment.clientId] ?? 0,
+      clinicalAssessmentStatus: clinicalByClient[assignment.clientId] ?? null,
+    }));
 }
 
 export async function getAssignedClientDetail(dieticianUserId: string, clientId: string) {
